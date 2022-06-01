@@ -22,7 +22,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'exporter = diagnostic_analysis.scripts.export_csv:main',
+            'exporter = diagnostic_analysis.export_csv:main',
         ],
     },
 )
