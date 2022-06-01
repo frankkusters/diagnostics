@@ -89,12 +89,8 @@ class LogExporter:
     def process_log(self):
         storage_options, converter_options = self.get_rosbag_options(self.logfile)
         reader = rosbag2_py.SequentialReader()
-        # No filter
-        # reader.reset_filter()
-
-        reader = rosbag2_py.SequentialReader()
         reader.open(storage_options, converter_options)
-
+        # read all topic and types from bag
         topic_types = reader.get_all_topics_and_types()
         # Create a map for quicker lookup
         type_map = {topic_types[i].name: topic_types[i].type for i in range(len(topic_types))}
