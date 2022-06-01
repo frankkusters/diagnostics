@@ -35,11 +35,12 @@
 ##\author Kevin Watts
 ##\brief LogExporter class does diagnostics logfile conversion to CSV
 
-import roslib
-import rosbag
-import diagnostic_msgs.msg
-import time, sys, os
+import rosbag2_py
+from diagnostic_msgs.msg import DiagnosticArray
+import time, os
 import operator, tempfile, subprocess
+from rosidl_runtime_py.utilities import get_message
+from rclpy.serialization import deserialize_message
 
 ##\brief Converts and processes diagnostics logs to CSV format
 ##
@@ -71,28 +72,52 @@ class LogExporter:
     ##\brief Return filename of output
     ##\param name str : DiagnosticStatus name ex: 'Mechanism Control'
     def get_filename(self, name):
-        if not self._stats.has_key(name):
+        if not name in self._stats:
             return None # self.output_dir + '/%s.csv' % name.replace(' ', '_')
         return self._stats[name]['file_name']
 
+    def get_rosbag_options(self, path, serialization_format='cdr'):
+        storage_options = rosbag2_py.StorageOptions(uri=path, storage_id='sqlite3')
+
+        converter_options = rosbag2_py.ConverterOptions(
+            input_serialization_format=serialization_format,
+            output_serialization_format=serialization_format)
+
+        return storage_options, converter_options
+
     ##\brief Use rosrecord to play back bagfile
     def process_log(self):
-        bag = rosbag.Bag(self.logfile)
-        for (topic, msg, t) in bag.read_messages():
+        storage_options, converter_options = self.get_rosbag_options(self.logfile)
+        reader = rosbag2_py.SequentialReader()
+        # No filter
+        # reader.reset_filter()
+
+        reader = rosbag2_py.SequentialReader()
+        reader.open(storage_options, converter_options)
+
+        topic_types = reader.get_all_topics_and_types()
+        # Create a map for quicker lookup
+        type_map = {topic_types[i].name: topic_types[i].type for i in range(len(topic_types))}
+
+        while reader.has_next():
+            data = DiagnosticArray()
+            (topic, data, t) = reader.read_next()
+            msg_type = get_message(type_map[topic])
+            msg = deserialize_message(data, msg_type)
             self._update(topic, msg)
 
     ##\brief Creates and updates data files with new messages
     def _update(self, topic, msg):
         if (not (topic == '/diagnostics')):
-            print "Discarding message on topic: %s" % topic
+            print("Discarding message on topic: %s" % topic)
             return
         
-        t = time.localtime(float(str(msg.header.stamp)) / 1000000000.0)
+        t = time.localtime(float(str(msg.header.stamp.sec)))
         
         for status in msg.status:
             name = status.name
 
-            if (not self._stats.has_key(name)):
+            if (not name in self._stats):
                 self._stats[name] = {}
                 
                 fields = {}
@@ -112,16 +137,16 @@ class LogExporter:
                 
 
             # Check to see if fields have changed. Add new fields to map
-            if (not [s.key for s in status.values] == self._stats[name]['fields'].keys()):
+            if not [s.key for s in status.values] == list(self._stats[name]['fields'].keys()):
                 for s in status.values:
-                    if not self._stats[name]['fields'].has_key(s.key):
+                    if not s.key in self._stats[name]['fields']:
                         self._stats[name]['fields'][s.key] = len(self._stats[name]['fields'])
 
             # Add values in correct place for header index
-            # Key/Value pairs can move around, this makes sure values are 
+            # Key/Value pairs can move around, this makes sure values are
             # added to correct keys
             vals = []
-            for key, val in self._stats[name]['fields'].iteritems():
+            for key, val in self._stats[name]['fields'].items():
                 vals.append('')
             for s in status.values:
                 vals[self._stats[name]['fields'][s.key]] = s.value.replace('\n','  ').replace(',',' ')
@@ -129,32 +154,30 @@ class LogExporter:
             msg = status.message.replace(',',' ').strip()
             hw_id = status.hardware_id.replace(',', ' ')
         
-            self._stats[name]['data_file'].write(','.join([time.strftime("%Y/%m/%d %H:%M:%S", t)] + 
+            self._stats[name]['data_file'].write(','.join([time.strftime("%Y/%m/%d %H:%M:%S", t)] +
                                             [str(status.level), msg, hw_id] + vals) + '\n')
 
     ##\brief Close logfile, append data to header
     def finish_logfile(self):
         for name in self._stats:
             # Sort fields by correct index, add to header
-            field_dict = sorted(self._stats[name]['fields'].iteritems(), key=operator.itemgetter(1))
+            field_dict = sorted(self._stats[name]['fields'].items(), key=operator.itemgetter(1))
             fields = map(operator.itemgetter(0), field_dict)
             
-            header_line = ','.join(['Timestamp'] + ['Level', 'Message', 'Hardware ID'] + 
+            header_line = ','.join(['Timestamp'] + ['Level', 'Message', 'Hardware ID'] +
                                     [f.replace(',','').replace('\n', ' ') for f in fields]) + '\n'
             
             file_name = os.path.join(self.output_dir, name.replace(' ', '_').replace('(', '').replace(')', '').replace('/', '__').replace('.', '').replace('#', '') + '.csv')
             
-            output_file = file(file_name, 'w')
+            output_file = open(file_name, 'w')
             output_file.write(header_line)
             output_file.close()
 
-
             self._stats[name]['data_file'].close() # Close data
-            
+
             # Append the tmp data file to the header
             subprocess.call("cat %s >> %s" % (self._stats[name]['data_name'], file_name), shell=True)
             # Remove tmp file
             os.remove(self._stats[name]['data_name'])
             # Store filename
             self._stats[name]['file_name'] = file_name
-    
