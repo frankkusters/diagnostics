@@ -37,41 +37,38 @@
 ##\brief Converts diagnostics log files into CSV's for analysis
 
 PKG = 'diagnostic_analysis'
-import roslib; roslib.load_manifest(PKG)
-import diagnostic_msgs.msg
-import time, sys, os
-import operator, tempfile, subprocess
-
+import os
+from ament_index_python.packages import get_package_share_directory
 from optparse import OptionParser
 
 from diagnostic_analysis.exporter import LogExporter
 
-if __name__ == '__main__':
+def main(args=None):
     # Allow user to set output directory
     parser = OptionParser()
     parser.add_option("-d", "--directory", dest="directory",
                       help="Write output to DIR/output. Default: %s" % PKG, metavar="DIR",
-                      default=roslib.packages.get_pkg_dir(PKG), action="store")
+                      default=get_package_share_directory(PKG), action="store")
     options, args = parser.parse_args()
 
     exporters = []
 
-    print 'Output directory: %s/output' % options.directory
+    print('Output directory: %s/output' % options.directory)
 
     try:
         for i, f in enumerate(args):
             filepath = 'output/%s_csv' % os.path.basename(f)[0:os.path.basename(f).find('.')]
             
             output_dir = os.path.join(options.directory,  filepath)
-            print "Processing file %s. File %d of %d." % (os.path.basename(f), i + 1, len(args))
-            
+            print("Processing file %s. File %d of %d." % (os.path.basename(f), i + 1, len(args)))
+
             exp = LogExporter(output_dir, f)
             exp.process_log()
             exp.finish_logfile()
             exporters.append(exp)
 
-        print 'Finished processing files.'
+        print('Finished processing files.')
     except:
         import traceback
-        print "Caught exception processing log file"
+        print("Caught exception processing log file")
         traceback.print_exc()
