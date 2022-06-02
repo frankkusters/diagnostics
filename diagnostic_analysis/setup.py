@@ -1,11 +1,28 @@
-## ! DO NOT MANUALLY INVOKE THIS setup.py, USE CATKIN INSTEAD
+from setuptools import setup
 
-from distutils.core import setup
-from catkin_pkg.python_setup import generate_distutils_setup
+package_name = 'diagnostic_analysis'
 
-# fetch values from package.xml
-setup_args = generate_distutils_setup(
-    packages=['diagnostic_analysis'],
-    package_dir={'': 'src'})
-
-setup(**setup_args)
+setup(
+    name=package_name,
+    version='1.9.3',
+    packages=[package_name],
+    data_files=[
+        ('share/ament_index/resource_index/packages',
+            ['resource/' + package_name]),
+        ('share/' + package_name, ['package.xml']),
+    ],
+    install_requires=['setuptools'],
+    zip_safe=True,
+    maintainer='Austin Hendrix',
+    maintainer_email='namniart@gmail.com',
+    description='The diagnostic_analysis package can convert a log of diagnostics data '
+        'into a series of CSV files. Robot logs are recorded with rosbag, and '
+        'can be processed offline using the scripts in this package.',
+    license='BSD',
+    tests_require=['pytest'],
+    entry_points={
+        'console_scripts': [
+            'exporter = diagnostic_analysis.scripts.export_csv:main',
+        ],
+    },
+)
