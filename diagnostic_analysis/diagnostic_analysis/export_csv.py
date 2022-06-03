@@ -49,6 +49,9 @@ def main(args=None):
     parser.add_option("-d", "--directory", dest="directory",
                       help="Write output to DIR/output. Default: %s" % PKG, metavar="DIR",
                       default=get_package_share_directory(PKG), action="store")
+    parser.add_option("-t", "--topic", action="store",
+                      help="Select topic to be converted to CSV", type="string")
+
     options, args = parser.parse_args()
 
     exporters = []
@@ -62,7 +65,7 @@ def main(args=None):
             output_dir = os.path.join(options.directory,  filepath)
             print("Processing file %s. File %d of %d." % (os.path.basename(f), i + 1, len(args)))
 
-            exp = LogExporter(output_dir, f)
+            exp = LogExporter(output_dir, f, options.topic)
             exp.process_log()
             exp.finish_logfile()
             exporters.append(exp)
