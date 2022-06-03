@@ -48,10 +48,11 @@ from rclpy.serialization import deserialize_message
 class LogExporter:
     ##\param output_dir str : Complete path of output dir. If None, uses temp dir
     ##\param logfile str : path of logfile
-    def __init__(self, output_dir, logfile):
+    def __init__(self, output_dir, logfile, topic):
         self._temp = False
         self._stats = {}
         self.logfile = logfile
+        self.topic = topic
 
         self.output_dir = output_dir
         if self.output_dir is None:
@@ -104,7 +105,7 @@ class LogExporter:
 
     ##\brief Creates and updates data files with new messages
     def _update(self, topic, msg):
-        if (not (topic == '/diagnostics')):
+        if (not (topic == self.topic)):
             print("Discarding message on topic: %s" % topic)
             return
         
