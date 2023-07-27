@@ -109,7 +109,7 @@ class LogExporter:
             print("Discarding message on topic: %s" % topic)
             return
         
-        t = time.localtime(float(str(msg.header.stamp.sec)))
+        t = msg.header.stamp.sec * 1000000000 + msg.header.stamp.nanosec
         
         for status in msg.status:
             name = status.name
@@ -151,7 +151,7 @@ class LogExporter:
             msg = status.message.replace(',',' ').strip()
             hw_id = status.hardware_id.replace(',', ' ')
         
-            self._stats[name]['data_file'].write(','.join([time.strftime("%Y/%m/%d %H:%M:%S", t)] +
+            self._stats[name]['data_file'].write(','.join([str(t)] +
                                             [str(status.level), msg, hw_id] + vals) + '\n')
 
     ##\brief Close logfile, append data to header
