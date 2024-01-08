@@ -164,8 +164,9 @@ class LogExporter:
             header_line = ','.join(['Timestamp'] + ['Level', 'Message', 'Hardware ID'] +
                                     [f.replace(',','').replace('\n', ' ') for f in fields]) + '\n'
             
-            file_name = os.path.join(self.output_dir, name.replace(' ', '_').replace('(', '').replace(')', '').replace('/', '__').replace('.', '').replace('#', '') + '.csv')
-            
+            file_name = os.path.join(self.output_dir,
+                                     name.replace(' ', '_').replace('(', '').replace(')', '').replace('/', '__').replace('\\', '__').replace('.', '').replace('#', '').replace('>','-').replace(':','-') + '.csv')
+
             output_file = open(file_name, 'w')
             output_file.write(header_line)
             output_file.close()
