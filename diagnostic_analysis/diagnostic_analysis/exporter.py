@@ -129,7 +129,7 @@ class LogExporter:
 
                 # Use named temp file, will cat this to header on close
                 datafile, tmp_name = tempfile.mkstemp()
-                self._stats[name]['data_file'] = os.fdopen(datafile, 'w')
+                self._stats[name]['data_file'] = os.fdopen(datafile, 'w+')
                 self._stats[name]['data_name'] = tmp_name
                 
 
@@ -169,12 +169,16 @@ class LogExporter:
 
             output_file = open(file_name, 'w')
             output_file.write(header_line)
+
+            # Move cursor to beginning of the data file to read all data
+            self._stats[name]['data_file'].seek(0)
+            # Append the tmp data file to the header
+            output_file.write(self._stats[name]['data_file'].read())
+
             output_file.close()
 
             self._stats[name]['data_file'].close() # Close data
 
-            # Append the tmp data file to the header
-            subprocess.call("cat %s >> %s" % (self._stats[name]['data_name'], file_name), shell=True)
             # Remove tmp file
             os.remove(self._stats[name]['data_name'])
             # Store filename
